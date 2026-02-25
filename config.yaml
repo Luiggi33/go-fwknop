@@ -1,0 +1,11 @@
+listen_on_interface: "lo"
+
+access_rules:
+  - knock_proto: "udp"
+    knock_port: 8000
+    open_proto: "tcp"
+    open_port: 9876
+  - knock_proto: "tcp"
+    knock_port: 9000
+    open_proto: "tcp"
+    open_port: 22
