@@ -1,11 +1,16 @@
 listen_on_interface: "lo"
 
+nftables_table_name: go-knop-tbl
+nftables_chain_name: go-knop-chain
+
 access_rules:
   - knock_proto: "udp"
     knock_port: 8000
     open_proto: "tcp"
     open_port: 9876
+    open_time: 15
   - knock_proto: "tcp"
     knock_port: 9000
     open_proto: "tcp"
     open_port: 22
+    open_time: 10
