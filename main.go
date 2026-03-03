@@ -207,11 +207,14 @@ func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
 }
 
 func bpfFilterFromString(config *Config) string {
-	returnString := ""
-	for _, accessRule := range config.AccessRules {
-		returnString += fmt.Sprintf("(%s dst port %d) or ", accessRule.KnockProto, accessRule.KnockPort)
+	if len(config.AccessRules) == 0 {
+		log.Fatal("no access rules configured")
 	}
-	return strings.TrimSuffix(returnString, " or ")
+	parts := make([]string, 0, len(config.AccessRules))
+	for _, r := range config.AccessRules {
+		parts = append(parts, fmt.Sprintf("(%s dst port %d)", r.KnockProto, r.KnockPort))
+	}
+	return strings.Join(parts, " or ")
 }
 
 func findMatchingRule(rules []AccessRule, proto string, port uint16) *AccessRule {
@@ -249,8 +252,7 @@ func main() {
 	}
 	defer handle.Close()
 
-	err = handle.SetBPFFilter(bpfFilterFromString(&config))
-	if err != nil {
+	if err := handle.SetBPFFilter(bpfFilterFromString(&config)); err != nil {
 		log.Fatalf("Error setting BPF filter: %v", err)
 	}
 
