@@ -49,6 +49,9 @@ func (c *Config) Validate() error {
 	if c.Device == "" {
 		return errors.New("listen_on_interface is required")
 	}
+	if len(c.AccessRules) == 0 {
+		return errors.New("at least one access rule is required")
+	}
 	for i, r := range c.AccessRules {
 		proto := strings.ToLower(r.KnockProto)
 		if proto != "tcp" && proto != "udp" {
@@ -74,9 +77,6 @@ func (c *Config) FindMatchingRule(proto string, port uint16) (AccessRule, bool) 
 }
 
 func (c *Config) AccessRulesToBpfFilter() string {
-	if len(c.AccessRules) == 0 {
-		log.Fatal("no access rules configured")
-	}
 	parts := make([]string, 0, len(c.AccessRules))
 	for _, r := range c.AccessRules {
 		parts = append(parts, fmt.Sprintf("(%s dst port %d)", r.KnockProto, r.KnockPort))
