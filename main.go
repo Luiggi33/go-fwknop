@@ -35,7 +35,7 @@ type AccessRule struct {
 }
 
 func (accessRule *AccessRule) String() string {
-	return fmt.Sprintf("Knock on %s port %d to open %s port %d for %d seconds", accessRule.KnockProto, accessRule.KnockPort, accessRule.OpenProto, accessRule.OpenPort, accessRule.OpenTime)
+	return fmt.Sprintf("knock on %s port %d to open %s port %d for %d seconds", accessRule.KnockProto, accessRule.KnockPort, accessRule.OpenProto, accessRule.OpenPort, accessRule.OpenTime)
 }
 
 type Config struct {
@@ -148,6 +148,8 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		}
 	}
 
+	log.Printf("added firewall rule from %s to %s (%s)\n", srcIP, openPort, openProto)
+
 	return nil
 }
 
@@ -175,6 +177,9 @@ func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 	}
 
 	delete(f.activeRules, key)
+
+	log.Printf("revoked rule from %s to %s (%s)\n", srcIP, openPort, openProto)
+
 	return nil
 }
 
@@ -347,7 +352,7 @@ func main() {
 
 		time.AfterFunc(time.Duration(rule.OpenTime)*time.Second, func() {
 			if err := firewallManager.RevokeRule(capturedIP, capturedRule.OpenPort, capturedRule.OpenProto); err != nil {
-				log.Printf("Firewall Manager couldn't remove rule: %s. this aint good: %v\n", capturedRule, err)
+				log.Printf("Firewall Manager couldn't remove rule %s, error: %v\n", capturedRule, err)
 			}
 		})
 	}
