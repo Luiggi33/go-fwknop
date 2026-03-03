@@ -225,6 +225,7 @@ func findMatchingRule(rules []AccessRule, proto string, port uint16) *AccessRule
 
 func main() {
 	configFile := flag.String("config-file", "config.yaml", "config file that should be used")
+	flag.Parse()
 
 	var config Config
 	yamlFile, err := os.ReadFile(*configFile)
