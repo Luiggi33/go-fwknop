@@ -64,6 +64,26 @@ func (c *Config) Validate() error {
 	return nil
 }
 
+func (c *Config) FindMatchingRule(proto string, port uint16) *AccessRule {
+	for _, rule := range c.AccessRules {
+		if strings.EqualFold(rule.KnockProto, proto) && rule.KnockPort == port {
+			return &rule
+		}
+	}
+	return nil
+}
+
+func (c *Config) AccessRulesToBpfFilter() string {
+	if len(c.AccessRules) == 0 {
+		log.Fatal("no access rules configured")
+	}
+	parts := make([]string, 0, len(c.AccessRules))
+	for _, r := range c.AccessRules {
+		parts = append(parts, fmt.Sprintf("(%s dst port %d)", r.KnockProto, r.KnockPort))
+	}
+	return strings.Join(parts, " or ")
+}
+
 type RuleKey struct {
 	SrcIP     string
 	OpenPort  uint16
@@ -237,26 +257,6 @@ func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
 	}, nil
 }
 
-func bpfFilterFromString(config *Config) string {
-	if len(config.AccessRules) == 0 {
-		log.Fatal("no access rules configured")
-	}
-	parts := make([]string, 0, len(config.AccessRules))
-	for _, r := range config.AccessRules {
-		parts = append(parts, fmt.Sprintf("(%s dst port %d)", r.KnockProto, r.KnockPort))
-	}
-	return strings.Join(parts, " or ")
-}
-
-func findMatchingRule(rules []AccessRule, proto string, port uint16) *AccessRule {
-	for _, rule := range rules {
-		if strings.EqualFold(rule.KnockProto, proto) && rule.KnockPort == port {
-			return &rule
-		}
-	}
-	return nil
-}
-
 func main() {
 	configFile := flag.String("config-file", "config.yaml", "config file that should be used")
 	flag.Parse()
@@ -286,7 +286,7 @@ func main() {
 	}
 	defer handle.Close()
 
-	if err := handle.SetBPFFilter(bpfFilterFromString(&config)); err != nil {
+	if err := handle.SetBPFFilter(config.AccessRulesToBpfFilter()); err != nil {
 		log.Fatalf("Error setting BPF filter: %v", err)
 	}
 
@@ -331,7 +331,7 @@ func main() {
 			}
 		}
 
-		rule := findMatchingRule(config.AccessRules, destProto, destPort)
+		rule := config.FindMatchingRule(destProto, destPort)
 		if rule == nil {
 			continue
 		}
