@@ -210,6 +210,8 @@ func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
 		Name:   tableName,
 	})
 
+	conn.FlushTable(table)
+
 	chain := conn.AddChain(&nftables.Chain{
 		Name:     chainName,
 		Table:    table,
