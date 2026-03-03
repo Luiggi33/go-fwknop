@@ -261,7 +261,7 @@ func main() {
 	go func() {
 		for sig := range c {
 			if err := firewallManager.CleanupRules(); err != nil {
-				log.Fatalf("Your about to have a bad time, firewall couldnt be cleaned up: %v\n", err)
+				log.Printf("Your about to have a bad time, firewall couldnt be cleaned up: %v\n", err)
 			}
 			log.Printf("%s\n", sig.String())
 			os.Exit(0)
@@ -309,7 +309,7 @@ func main() {
 
 		time.AfterFunc(time.Duration(rule.OpenTime)*time.Second, func() {
 			if err := firewallManager.RevokeRule(srcIP, rule.OpenPort, rule.OpenProto); err != nil {
-				log.Fatalf("Firewall Manager couldn't remove rule: %s. this aint good: %v\n", rule, err)
+				log.Printf("Firewall Manager couldn't remove rule: %s. this aint good: %v\n", rule, err)
 			}
 		})
 	}
