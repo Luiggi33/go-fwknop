@@ -70,7 +70,7 @@ type RuleKey struct {
 	OpenProto string
 }
 
-func (r RuleKey) GetIdentifier() string {
+func (r RuleKey) String() string {
 	return fmt.Sprintf("%s:%s:%d", r.SrcIP, r.OpenProto, r.OpenPort)
 }
 
@@ -116,7 +116,7 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		OpenProto: openProto,
 	}
 
-	userData := []byte(ruleKey.GetIdentifier())
+	userData := []byte(ruleKey.String())
 
 	ruleTarget := rule.NewRuleTarget(f.table, f.chain)
 	ruleData := rule.NewRuleData(userData, exprs)
