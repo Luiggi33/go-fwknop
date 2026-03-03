@@ -82,6 +82,13 @@ type FirewallManager struct {
 	mu          sync.Mutex
 }
 
+func (f *FirewallManager) HasRule(srcIP net.IP, openPort uint16, openProto string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	_, ok := f.activeRules[RuleKey{SrcIP: srcIP.String(), OpenPort: openPort, OpenProto: openProto}]
+	return ok
+}
+
 func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -325,7 +332,10 @@ func main() {
 			continue
 		}
 
-		log.Printf("Valid knock from %s\n", srcIP)
+		if firewallManager.HasRule(srcIP, rule.OpenPort, rule.OpenProto) {
+			log.Printf("knock was discarded, due to port being open for this IP already")
+			continue
+		}
 
 		if err := firewallManager.AddRule(srcIP, rule.OpenPort, rule.OpenProto); err != nil {
 			log.Printf("Firewall Manager coduln't add rule: %s! See %v\n", rule, err)
