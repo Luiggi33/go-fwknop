@@ -292,7 +292,7 @@ func main() {
 	go func() {
 		for sig := range c {
 			if err := firewallManager.CleanupRules(); err != nil {
-				log.Printf("Your about to have a bad time, firewall couldnt be cleaned up: %v\n", err)
+				log.Printf("You're about to have a bad time, firewall couldnt be cleaned up: %v\n", err)
 			}
 			log.Printf("%s\n", sig.String())
 			os.Exit(0)
@@ -337,7 +337,7 @@ func main() {
 		}
 
 		if err := firewallManager.AddRule(srcIP, rule.OpenPort, rule.OpenProto); err != nil {
-			log.Printf("Firewall Manager coduln't add rule: %s! See %v\n", rule, err)
+			log.Printf("Firewall Manager couldn't add rule: %s! See %v\n", rule, err)
 			continue
 		}
 
