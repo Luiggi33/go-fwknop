@@ -167,7 +167,7 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		}
 	}
 
-	log.Printf("added firewall rule from %s to %s (%s)\n", srcIP, openPort, openProto)
+	log.Printf("added firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
 
 	return nil
 }
@@ -197,7 +197,7 @@ func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 
 	delete(f.activeRules, key)
 
-	log.Printf("revoked rule from %s to %s (%s)\n", srcIP, openPort, openProto)
+	log.Printf("revoked firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
 
 	return nil
 }
