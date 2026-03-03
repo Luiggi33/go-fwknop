@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -42,6 +43,25 @@ type Config struct {
 	AccessRules       []AccessRule `yaml:"access_rules"`
 	NFTablesTableName string       `yaml:"nftables_table_name"`
 	NFTablesChainName string       `yaml:"nftables_chain_name"`
+}
+
+func (c *Config) Validate() error {
+	if c.Device == "" {
+		return errors.New("listen_on_interface is required")
+	}
+	for i, r := range c.AccessRules {
+		proto := strings.ToLower(r.KnockProto)
+		if proto != "tcp" && proto != "udp" {
+			return fmt.Errorf("rule %d: invalid knock_proto %q", i, r.KnockProto)
+		}
+		if r.KnockPort == 0 || r.OpenPort == 0 {
+			return fmt.Errorf("rule %d: ports must be non-zero", i)
+		}
+		if r.OpenTime == 0 {
+			return fmt.Errorf("rule %d: open_time must be non-zero", i)
+		}
+	}
+	return nil
 }
 
 type RuleKey struct {
@@ -238,6 +258,9 @@ func main() {
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
 		log.Fatalf("Error reading in config: %v", err)
+	}
+	if err := config.Validate(); err != nil {
+		log.Fatalf("config couldnt be validated: %s", err)
 	}
 
 	firewallManager, err := NewFirewallManager(config.NFTablesTableName, config.NFTablesChainName)
