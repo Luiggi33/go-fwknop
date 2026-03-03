@@ -64,13 +64,13 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (c *Config) FindMatchingRule(proto string, port uint16) *AccessRule {
-	for _, rule := range c.AccessRules {
-		if strings.EqualFold(rule.KnockProto, proto) && rule.KnockPort == port {
-			return &rule
+func (c *Config) FindMatchingRule(proto string, port uint16) (AccessRule, bool) {
+	for _, r := range c.AccessRules {
+		if strings.EqualFold(r.KnockProto, proto) && r.KnockPort == port {
+			return r, true
 		}
 	}
-	return nil
+	return AccessRule{}, false
 }
 
 func (c *Config) AccessRulesToBpfFilter() string {
@@ -102,16 +102,21 @@ type FirewallManager struct {
 	mu          sync.Mutex
 }
 
-func (f *FirewallManager) HasRule(srcIP net.IP, openPort uint16, openProto string) bool {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	_, ok := f.activeRules[RuleKey{SrcIP: srcIP.String(), OpenPort: openPort, OpenProto: openProto}]
-	return ok
-}
+var ErrRuleExists = errors.New("rule already active")
 
 func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+
+	ruleKey := RuleKey{
+		SrcIP:     srcIP.String(),
+		OpenPort:  openPort,
+		OpenProto: openProto,
+	}
+
+	if _, exists := f.activeRules[ruleKey]; exists {
+		return ErrRuleExists
+	}
 
 	parsedIP, err := netip.ParseAddr(srcIP.String())
 	if err != nil {
@@ -135,12 +140,6 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 	exprs, err := rule.Build(expr.VerdictAccept, rule.AddressFamily(addressFamilyExpression), rule.SourceAddress(parsedIP), rule.TransportProtocol(protoExpression), rule.DestinationPort(openPort))
 	if err != nil {
 		return err
-	}
-
-	ruleKey := RuleKey{
-		SrcIP:     srcIP.String(),
-		OpenPort:  openPort,
-		OpenProto: openProto,
 	}
 
 	userData := []byte(ruleKey.String())
@@ -331,18 +330,15 @@ func main() {
 			}
 		}
 
-		rule := config.FindMatchingRule(destProto, destPort)
-		if rule == nil {
-			continue
-		}
-
-		if firewallManager.HasRule(srcIP, rule.OpenPort, rule.OpenProto) {
-			log.Printf("knock was discarded, due to port being open for this IP already")
+		rule, ok := config.FindMatchingRule(destProto, destPort)
+		if !ok {
 			continue
 		}
 
 		if err := firewallManager.AddRule(srcIP, rule.OpenPort, rule.OpenProto); err != nil {
-			log.Printf("Firewall Manager couldn't add rule: %s! See %v\n", rule, err)
+			if !errors.Is(err, ErrRuleExists) {
+				log.Printf("Firewall Manager couldn't add rule: %s! See %v\n", rule, err)
+			}
 			continue
 		}
 
