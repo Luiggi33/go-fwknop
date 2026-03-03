@@ -183,18 +183,15 @@ func (f *FirewallManager) CleanupRules() error {
 	defer f.mu.Unlock()
 
 	for _, handle := range f.activeRules {
-		err := f.conn.DelRule(&nftables.Rule{
+		f.conn.DelRule(&nftables.Rule{
 			Table:  f.table,
 			Chain:  f.chain,
 			Handle: handle,
 		})
-		if err != nil {
-			return fmt.Errorf("failed to cleanup rule: %w", err)
-		}
+	}
 
-		if err := f.conn.Flush(); err != nil {
-			return fmt.Errorf("failed to cleanup rule: %w", err)
-		}
+	if err := f.conn.Flush(); err != nil {
+		return fmt.Errorf("failed to cleanup rule: %w", err)
 	}
 
 	clear(f.activeRules)
