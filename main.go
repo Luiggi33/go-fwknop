@@ -348,11 +348,10 @@ func main() {
 
 		capturedIP := make(net.IP, len(srcIP))
 		copy(capturedIP, srcIP)
-		capturedRule := rule
 
 		time.AfterFunc(time.Duration(rule.OpenTime)*time.Second, func() {
-			if err := firewallManager.RevokeRule(capturedIP, capturedRule.OpenPort, capturedRule.OpenProto); err != nil {
-				log.Printf("Firewall Manager couldn't remove rule %s, error: %v\n", capturedRule.String(), err)
+			if err := firewallManager.RevokeRule(capturedIP, rule.OpenPort, rule.OpenProto); err != nil {
+				log.Printf("Firewall Manager couldn't remove rule %s, error: %v\n", rule.String(), err)
 			}
 		})
 	}
