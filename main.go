@@ -337,7 +337,7 @@ func main() {
 
 		if err := firewallManager.AddRule(srcIP, rule.OpenPort, rule.OpenProto); err != nil {
 			if !errors.Is(err, ErrRuleExists) {
-				log.Printf("Firewall Manager couldn't add rule: %s! See %v\n", rule, err)
+				log.Printf("Firewall Manager couldn't add rule: %s! See %v\n", rule.String(), err)
 			}
 			continue
 		}
@@ -348,7 +348,7 @@ func main() {
 
 		time.AfterFunc(time.Duration(rule.OpenTime)*time.Second, func() {
 			if err := firewallManager.RevokeRule(capturedIP, capturedRule.OpenPort, capturedRule.OpenProto); err != nil {
-				log.Printf("Firewall Manager couldn't remove rule %s, error: %v\n", capturedRule, err)
+				log.Printf("Firewall Manager couldn't remove rule %s, error: %v\n", capturedRule.String(), err)
 			}
 		})
 	}
