@@ -330,6 +330,10 @@ func main() {
 			}
 		}
 
+		if srcIP == nil || destProto == "" {
+			continue
+		}
+
 		rule, ok := config.FindMatchingRule(destProto, destPort)
 		if !ok {
 			continue
