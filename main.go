@@ -122,6 +122,7 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 	if err != nil {
 		return err
 	}
+	parsedIP = parsedIP.Unmap()
 
 	var addressFamilyExpression expressions.AddrFamily
 	if parsedIP.Is4() {
