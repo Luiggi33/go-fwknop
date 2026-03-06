@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	main "fwknock"
-	"log/slog"
+	"fwknock/config"
+	"log"
 	"net"
 	"slices"
 	"strconv"
@@ -15,13 +15,13 @@ import (
 )
 
 type Processor struct {
-	users       []main.User
-	rules       []main.Rule
+	users       []config.User
+	rules       []config.Rule
 	replayCache map[string]time.Time
 	mu          sync.Mutex
 }
 
-func NewProcessor(users []main.User, rules []main.Rule) *Processor {
+func NewProcessor(users []config.User, rules []config.Rule) *Processor {
 	p := &Processor{
 		users:       users,
 		rules:       rules,
@@ -30,7 +30,7 @@ func NewProcessor(users []main.User, rules []main.Rule) *Processor {
 	return p
 }
 
-func (p *Processor) FindRuleByKnockPort(port uint16) *main.Rule {
+func (p *Processor) FindRuleByKnockPort(port uint16) *config.Rule {
 	for i := range p.rules {
 		if p.rules[i].KnockPort == port {
 			return &p.rules[i]
@@ -41,32 +41,32 @@ func (p *Processor) FindRuleByKnockPort(port uint16) *main.Rule {
 
 var ErrSPARejected = errors.New("SPA packet rejected")
 
-func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (*main.Rule, *main.User, error) {
+func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (*config.Rule, *config.User, error) {
 	// base64(iv + ciphertext) + ":" + base64(HMAC-SHA256(iv + ciphertext))
 	payloadParts := bytes.Split(rawPayload, []byte{':'})
 	if len(payloadParts) != 2 {
-		slog.Debug("payload has too many/too little parts")
+		log.Printf("processor: payload has too many/too little parts")
 		return nil, nil, ErrSPARejected
 	}
 
 	rule := p.FindRuleByKnockPort(knockPort)
 	if rule == nil {
-		slog.Debug("no matching rule found while processing")
+		log.Printf("processor: no matching rule found")
 		return nil, nil, ErrSPARejected
 	}
 
 	ciphertextPart, err := base64.StdEncoding.DecodeString(string(payloadParts[0]))
 	if err != nil {
-		slog.Debug("%w", err)
+		log.Printf("processor: %s", err.Error())
 		return nil, nil, ErrSPARejected
 	}
 	hmacPart, err := base64.StdEncoding.DecodeString(string(payloadParts[1]))
 	if err != nil {
-		slog.Debug("%w", err)
+		log.Printf("processor: %s", err.Error())
 		return nil, nil, ErrSPARejected
 	}
 
-	var matchedUser *main.User
+	var matchedUser *config.User
 	for _, user := range p.users {
 		if !slices.Contains(rule.AllowedUsers, user.Name) {
 			continue
@@ -77,7 +77,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		}
 	}
 	if matchedUser == nil {
-		slog.Debug("no matching user found")
+		log.Printf("processor: no matching user found")
 		return nil, nil, ErrSPARejected
 	}
 
@@ -86,7 +86,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	p.mu.Lock()
 	_, inCache := p.replayCache[payloadDigest]
 	if inCache {
-		slog.Debug("potential replay attack!")
+		log.Printf("processor: potential replay attack!")
 		return nil, nil, ErrSPARejected
 	}
 	p.mu.Unlock()
@@ -108,17 +108,17 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 0, 16)
 
 	if unixTimestamp.After(time.Now().Add(5*time.Second)) || unixTimestamp.Before(time.Now().Add(-60*time.Second)) {
-		slog.Debug("timestamp seems unusual... replay attack?")
+		log.Printf("processor: timestamp seems unusual... replay attack?")
 		return nil, nil, ErrSPARejected
 	}
 
 	if username != matchedUser.Name {
-		slog.Debug("usernames don't match, somebody tampered!")
+		log.Printf("processor: usernames don't match, somebody tampered!")
 		return nil, nil, ErrSPARejected
 	}
 
 	if openProto != rule.OpenProto || uint16(openPort) != rule.OpenPort {
-		slog.Debug("found rule and send rule dont match up, somebody tampered!")
+		log.Printf("processor: found rule and send rule dont match up, somebody tampered!")
 		return nil, nil, ErrSPARejected
 	}
 
