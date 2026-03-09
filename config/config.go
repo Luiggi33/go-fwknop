@@ -95,15 +95,6 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (c *Config) FindMatchingRule(port uint16) (Rule, bool) {
-	for _, rule := range c.Rules {
-		if rule.KnockPort == port {
-			return rule, true
-		}
-	}
-	return Rule{}, false
-}
-
 func (c *Config) AccessRulesToBpfFilter() string {
 	parts := make([]string, 0, len(c.Rules))
 	for _, rule := range c.Rules {
