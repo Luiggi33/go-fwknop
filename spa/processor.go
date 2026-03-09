@@ -106,6 +106,9 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	}
 
 	ciphertextParts := bytes.Split(decryptedCiphertext, []byte{'\n'})
+	if len(ciphertextParts) == 5 && len(ciphertextParts[4]) == 0 {
+		ciphertextParts = ciphertextParts[:4]
+	}
 	if len(ciphertextParts) != 4 {
 		log.Printf("processor: decrypted ciphertext has too many/too little parts")
 		return nil, nil, ErrSPARejected
