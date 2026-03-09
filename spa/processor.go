@@ -106,6 +106,10 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	}
 
 	ciphertextParts := bytes.Split(decryptedCiphertext, []byte{'\n'})
+	if len(ciphertextParts) != 4 {
+		log.Printf("processor: decrypted ciphertext has too many/too little parts")
+		return nil, nil, ErrSPARejected
+	}
 	username := string(ciphertextParts[0])
 	unixTimestampInt, err := strconv.Atoi(string(ciphertextParts[1]))
 	if err != nil {
