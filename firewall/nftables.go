@@ -95,11 +95,17 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		return fmt.Errorf("failed to get rules after insert: %w", err)
 	}
 
+	ruleFound := false
 	for _, r := range chainRules {
 		if bytes.Equal(r.UserData, userData) {
 			f.activeRules[ruleKey] = r.Handle
+			ruleFound = true
 			break
 		}
+	}
+
+	if !ruleFound {
+		return fmt.Errorf("added rule but can't find it in chain")
 	}
 
 	log.Printf("added firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
