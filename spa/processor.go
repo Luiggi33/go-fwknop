@@ -55,12 +55,19 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	ciphertextPart, err := base64.StdEncoding.DecodeString(string(payloadParts[0]))
+	ciphertextPayloadPart := make([]byte, len(payloadParts[0]))
+	copy(ciphertextPayloadPart, payloadParts[0])
+
+	ciphertextPart, err := base64.StdEncoding.DecodeString(string(ciphertextPayloadPart))
 	if err != nil {
 		log.Printf("processor: %s", err.Error())
 		return nil, nil, ErrSPARejected
 	}
-	hmacPart, err := base64.StdEncoding.DecodeString(string(payloadParts[1]))
+
+	ciphertextPayloadTwo := make([]byte, len(payloadParts[1]))
+	copy(ciphertextPayloadTwo, payloadParts[1])
+
+	hmacPart, err := base64.StdEncoding.DecodeString(string(ciphertextPayloadTwo))
 	if err != nil {
 		log.Printf("processor: %s", err.Error())
 		return nil, nil, ErrSPARejected
