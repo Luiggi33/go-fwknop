@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"fwknock/config"
 	"fwknock/firewall"
 	"fwknock/spa"
@@ -19,6 +20,15 @@ import (
 
 	"go.yaml.in/yaml/v3"
 )
+
+func newFirewallManager(cfg config.Config) (firewall.Manager, error) {
+	switch cfg.FirewallBackend {
+	case "nftables":
+		return firewall.NewNFTablesManager(cfg.NFTablesTableName, cfg.NFTablesChainName)
+	default:
+		return nil, fmt.Errorf("unknown backend: %s", cfg.FirewallBackend)
+	}
+}
 
 func main() {
 	configFile := flag.String("config-file", "config.yaml", "config file that should be used")
@@ -37,9 +47,9 @@ func main() {
 		log.Fatalf("config couldnt be validated: %s", err)
 	}
 
-	firewallManager, err := firewall.NewFirewallManager(config.NFTablesTableName, config.NFTablesChainName)
+	firewallManager, err := newFirewallManager(config)
 	if err != nil {
-		log.Fatalf("Error creating nftables manager: %v", err)
+		log.Fatalf("Error creating firewall manager: %v", err)
 	}
 	defer firewallManager.Close()
 

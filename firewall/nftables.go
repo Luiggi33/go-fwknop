@@ -26,7 +26,7 @@ func (r RuleKey) String() string {
 	return fmt.Sprintf("%s:%s:%d", r.SrcIP, r.OpenProto, r.OpenPort)
 }
 
-type FirewallManager struct {
+type NFTablesManager struct {
 	conn        *nftables.Conn
 	table       *nftables.Table
 	chain       *nftables.Chain
@@ -36,7 +36,7 @@ type FirewallManager struct {
 
 var ErrRuleExists = errors.New("rule already active")
 
-func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto string) error {
+func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -105,7 +105,7 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 	return nil
 }
 
-func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto string) error {
+func (f *NFTablesManager) RevokeRule(srcIP net.IP, openPort uint16, openProto string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -135,7 +135,7 @@ func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 	return nil
 }
 
-func (f *FirewallManager) CleanupRules() error {
+func (f *NFTablesManager) CleanupRules() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -156,14 +156,14 @@ func (f *FirewallManager) CleanupRules() error {
 	return nil
 }
 
-func (f *FirewallManager) Close() error {
+func (f *NFTablesManager) Close() error {
 	if err := f.conn.CloseLasting(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
+func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
 	conn, err := nftables.New(nftables.AsLasting())
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to nftables: %w", err)
@@ -188,7 +188,7 @@ func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
 		return nil, fmt.Errorf("failed to set up table/chain: %w", err)
 	}
 
-	return &FirewallManager{
+	return &NFTablesManager{
 		conn:        conn,
 		table:       table,
 		chain:       chain,

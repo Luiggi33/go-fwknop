@@ -35,6 +35,7 @@ type Config struct {
 	NFTablesChainName string `yaml:"nftables_chain_name"`
 	Users             []User `yaml:"users"`
 	Rules             []Rule `yaml:"rules"`
+	FirewallBackend   string `yaml:"firewall_backend"`
 }
 
 func (c *Config) Validate() error {
