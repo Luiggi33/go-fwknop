@@ -74,12 +74,12 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	}
 
 	var matchedUser *config.User
-	for _, user := range p.users {
+	for i, user := range p.users {
 		if !slices.Contains(rule.AllowedUsers, user.Name) {
 			continue
 		}
 		if VerifyHMAC(user.HMACKeyBytes, ciphertextPart, hmacPart) {
-			matchedUser = &user
+			matchedUser = &p.users[i]
 			break
 		}
 	}
