@@ -107,6 +107,9 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	unixTimestamp := time.Unix(int64(unixTimestampInt), 0)
 	openProto := string(ciphertextParts[2])
 	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 0, 16)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	if unixTimestamp.After(time.Now().Add(5*time.Second)) || unixTimestamp.Before(time.Now().Add(-60*time.Second)) {
 		log.Printf("processor: timestamp seems unusual... replay attack?")
