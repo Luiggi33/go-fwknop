@@ -84,12 +84,13 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	payloadDigest := PayloadDigest(ciphertextPart)
 
 	p.mu.Lock()
+	defer p.mu.Unlock()
+
 	_, inCache := p.replayCache[payloadDigest]
 	if inCache {
 		log.Printf("processor: potential replay attack!")
 		return nil, nil, ErrSPARejected
 	}
-	p.mu.Unlock()
 
 	// [username\n][unix_timestamp\n][open_proto\n][open_port\n]
 	decryptedCiphertext, err := Decrypt(matchedUser.AESKeyBytes, ciphertextPart)
@@ -122,9 +123,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	p.mu.Lock()
 	p.replayCache[payloadDigest] = time.Now()
-	p.mu.Unlock()
 
 	return rule, matchedUser, nil
 }
