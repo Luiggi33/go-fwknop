@@ -108,7 +108,10 @@ func main() {
 				continue
 			}
 
-			payload := packet.Data()
+			var payload []byte
+			if appLayer := packet.ApplicationLayer(); appLayer != nil {
+				payload = appLayer.Payload()
+			}
 			if payload == nil {
 				continue
 			}
