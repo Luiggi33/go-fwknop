@@ -91,11 +91,17 @@ func (c *Config) Validate() error {
 	}
 	seenKnockPorts := make(map[uint16]bool)
 	for i, rule := range c.Rules {
+		if rule.Name == "" {
+			return fmt.Errorf("rule %d: name is required", i)
+		}
 		if rule.KnockPort == 0 || rule.OpenPort == 0 {
 			return fmt.Errorf("rule %d: ports must be non-zero", i)
 		}
 		if rule.OpenTime == 0 {
 			return fmt.Errorf("rule %d: open_time must be non-zero", i)
+		}
+		if rule.OpenProto != "tcp" && rule.OpenProto != "udp" {
+			return fmt.Errorf("rule %d: open_proto must be tcp or udp", i)
 		}
 
 		if seenKnockPorts[rule.KnockPort] {
