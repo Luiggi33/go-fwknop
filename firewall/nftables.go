@@ -66,8 +66,10 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 	var protoExpression expressions.TransportProto
 	if strings.EqualFold(openProto, "tcp") {
 		protoExpression = expressions.TCP
-	} else {
+	} else if strings.EqualFold(openProto, "udp") {
 		protoExpression = expressions.UDP
+	} else {
+		return fmt.Errorf("unsupported protocol: %s", openProto)
 	}
 
 	exprs, err := rule.Build(expr.VerdictAccept, rule.AddressFamily(addressFamilyExpression), rule.SourceAddress(parsedIP), rule.TransportProtocol(protoExpression), rule.DestinationPort(openPort))
@@ -173,8 +175,6 @@ func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
 		Family: nftables.TableFamilyINet, // covers both IPv4 and IPv6
 		Name:   tableName,
 	})
-
-	conn.FlushTable(table)
 
 	chain := conn.AddChain(&nftables.Chain{
 		Name:     chainName,
