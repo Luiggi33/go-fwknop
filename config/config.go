@@ -56,7 +56,7 @@ func (c *Config) Validate() error {
 		if len(aesBytes) != 32 {
 			return fmt.Errorf("user %d: aes key in wrong format!", i)
 		}
-		user.AESKeyBytes = aesBytes
+		c.Users[i].AESKeyBytes = aesBytes
 
 		hmacBytes, err := base64.StdEncoding.DecodeString(user.HMACKey)
 		if err != nil {
@@ -65,7 +65,7 @@ func (c *Config) Validate() error {
 		if len(hmacBytes) != 32 {
 			return fmt.Errorf("user %d: hmac key in wrong format!", i)
 		}
-		user.HMACKeyBytes = hmacBytes
+		c.Users[i].HMACKeyBytes = hmacBytes
 
 		if seenUsername[user.Name] {
 			return fmt.Errorf("user %d: duplicated username %s", i, user.Name)
