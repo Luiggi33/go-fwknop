@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating nftables manager: %v", err)
 	}
-	defer firewallManager.Conn.CloseLasting()
+	defer firewallManager.Close()
 
 	handle, err := pcap.OpenLive(config.Device, 1600, true, pcap.BlockForever)
 	if err != nil {
@@ -59,7 +59,7 @@ func main() {
 	defer stop()
 
 	processor := spa.NewProcessor(config.Users, config.Rules)
-	processor.StartEviction(ctx, 60*time.Second)
+	processor.StartEviction(ctx, 1*time.Hour)
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for {

@@ -27,7 +27,7 @@ func (r RuleKey) String() string {
 }
 
 type FirewallManager struct {
-	Conn        *nftables.Conn
+	conn        *nftables.Conn
 	table       *nftables.Table
 	chain       *nftables.Chain
 	activeRules map[RuleKey]uint64
@@ -79,16 +79,16 @@ func (f *FirewallManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 
 	ruleTarget := rule.NewRuleTarget(f.table, f.chain)
 	ruleData := rule.NewRuleData(userData, exprs)
-	_, err = ruleTarget.Add(f.Conn, ruleData)
+	_, err = ruleTarget.Add(f.conn, ruleData)
 	if err != nil {
 		return fmt.Errorf("adding rule to target: %w", err)
 	}
 
-	if err := f.Conn.Flush(); err != nil {
+	if err := f.conn.Flush(); err != nil {
 		return fmt.Errorf("flush rules: %w", err)
 	}
 
-	chainRules, err := f.Conn.GetRules(f.table, f.chain)
+	chainRules, err := f.conn.GetRules(f.table, f.chain)
 	if err != nil {
 		return fmt.Errorf("failed to get rules after insert: %w", err)
 	}
@@ -115,7 +115,7 @@ func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 		return nil
 	}
 
-	err := f.Conn.DelRule(&nftables.Rule{
+	err := f.conn.DelRule(&nftables.Rule{
 		Table:  f.table,
 		Chain:  f.chain,
 		Handle: handle,
@@ -124,7 +124,7 @@ func (f *FirewallManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 		return fmt.Errorf("failed to remove rule: %w", err)
 	}
 
-	if err := f.Conn.Flush(); err != nil {
+	if err := f.conn.Flush(); err != nil {
 		return fmt.Errorf("failed to remove rule: %w", err)
 	}
 
@@ -140,19 +140,26 @@ func (f *FirewallManager) CleanupRules() error {
 	defer f.mu.Unlock()
 
 	for _, handle := range f.activeRules {
-		f.Conn.DelRule(&nftables.Rule{
+		f.conn.DelRule(&nftables.Rule{
 			Table:  f.table,
 			Chain:  f.chain,
 			Handle: handle,
 		})
 	}
 
-	if err := f.Conn.Flush(); err != nil {
+	if err := f.conn.Flush(); err != nil {
 		return fmt.Errorf("failed to cleanup rule: %w", err)
 	}
 
 	clear(f.activeRules)
 
+	return nil
+}
+
+func (f *FirewallManager) Close() error {
+	if err := f.conn.CloseLasting(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -182,7 +189,7 @@ func NewFirewallManager(tableName, chainName string) (*FirewallManager, error) {
 	}
 
 	return &FirewallManager{
-		Conn:        conn,
+		conn:        conn,
 		table:       table,
 		chain:       chain,
 		activeRules: make(map[RuleKey]uint64),
