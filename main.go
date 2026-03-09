@@ -93,9 +93,6 @@ func main() {
 				case *layers.UDP:
 					destPort = uint16(v.DstPort)
 					destProto = "udp"
-				case *layers.TCP:
-					destPort = uint16(v.DstPort)
-					destProto = "tcp"
 				}
 			}
 
