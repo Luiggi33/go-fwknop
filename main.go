@@ -81,6 +81,10 @@ func main() {
 			return
 		case packet, ok := <-packetSource.Packets():
 			if !ok {
+				log.Println("packet sources isn't ok")
+				if err := firewallManager.CleanupRules(); err != nil {
+					log.Printf("cleanup failed: %v", err)
+				}
 				return
 			}
 
