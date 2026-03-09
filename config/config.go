@@ -36,17 +36,33 @@ type Config struct {
 	Users             []User `yaml:"users"`
 	Rules             []Rule `yaml:"rules"`
 	FirewallBackend   string `yaml:"firewall_backend"`
+	MaxPacketLength   int32  `yaml:"max_packet_length"`
 }
 
 func (c *Config) Validate() error {
 	if c.Device == "" {
 		return errors.New("listen_on_interface is required")
 	}
+	if c.NFTablesTableName == "" {
+		return errors.New("nftables_table_name is required")
+	}
+	if c.NFTablesChainName == "" {
+		return errors.New("nftables_chain_name is required")
+	}
 	if len(c.Rules) == 0 {
 		return errors.New("at least one access rule is required")
 	}
 	if len(c.Users) == 0 {
 		return errors.New("at least one user is required")
+	}
+	if c.FirewallBackend == "" {
+		return errors.New("firewall_backend is required")
+	}
+	if c.MaxPacketLength <= 0 {
+		return errors.New("max_packet_length must be positive")
+	}
+	if c.MaxPacketLength > 65535 {
+		return errors.New("max_packet_length must be at most 65535")
 	}
 	seenUsername := make(map[string]bool)
 	for i, user := range c.Users {

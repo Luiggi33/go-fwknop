@@ -13,8 +13,11 @@ func encodedKey(fill byte, size int) string {
 
 func validConfig() Config {
 	return Config{
-		Device:          "eth0",
-		FirewallBackend: "nftables",
+		Device:            "eth0",
+		FirewallBackend:   "nftables",
+		NFTablesTableName: "go-fwknop-filter",
+		NFTablesChainName: "go-fwknop-chain",
+		MaxPacketLength:   1600,
 		Users: []User{
 			{
 				Name:    "alice",

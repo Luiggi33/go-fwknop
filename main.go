@@ -53,7 +53,7 @@ func main() {
 	}
 	defer firewallManager.Close()
 
-	handle, err := pcap.OpenLive(config.Device, 1600, true, pcap.BlockForever)
+	handle, err := pcap.OpenLive(config.Device, config.MaxPacketLength, true, pcap.BlockForever)
 	if err != nil {
 		log.Fatalf("Error starting listener: %v", err)
 	}

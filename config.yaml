@@ -1,6 +1,7 @@
 listen_on_interface: "eth0"
 nftables_table_name: "go-knop-tbl"
 nftables_chain_name: "go-knop-chain"
+max_packet_length: 65535
 
 users:
   - name: "alice"
