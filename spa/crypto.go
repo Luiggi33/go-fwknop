@@ -30,6 +30,9 @@ func Encrypt(key, plaintext []byte) ([]byte, error) {
 }
 
 func Decrypt(key, data []byte) ([]byte, error) {
+	if len(data) < 12 {
+		return nil, fmt.Errorf("data too short to contain nonce")
+	}
 	nonce, ciphertext := data[:12], data[12:]
 
 	block, err := aes.NewCipher(key)
