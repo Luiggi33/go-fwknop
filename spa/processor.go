@@ -55,6 +55,17 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
+	payloadDigest := PayloadDigest(ciphertextPart)
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	_, inCache := p.replayCache[payloadDigest]
+	if inCache {
+		log.Printf("processor: potential replay attack!")
+		return nil, nil, ErrSPARejected
+	}
+
 	var matchedUser *config.User
 	var decryptedCiphertext []byte
 	for i, user := range p.users {
@@ -73,17 +84,6 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	payloadDigest := PayloadDigest(ciphertextPart)
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	_, inCache := p.replayCache[payloadDigest]
-	if inCache {
-		log.Printf("processor: potential replay attack!")
-		return nil, nil, ErrSPARejected
-	}
-
 	// decryptedCiphertext = [username\n][unix_timestamp\n][open_proto\n][open_port\n][src_ip\n]
 	ciphertextParts := bytes.Split(decryptedCiphertext, []byte{'\n'})
 	if len(ciphertextParts) == 6 && len(ciphertextParts[5]) == 0 {
@@ -96,13 +96,13 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	username := string(ciphertextParts[0])
 	unixTimestampInt, err := strconv.Atoi(string(ciphertextParts[1]))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, ErrSPARejected
 	}
 	unixTimestamp := time.Unix(int64(unixTimestampInt), 0)
 	openProto := string(ciphertextParts[2])
 	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 0, 16)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, ErrSPARejected
 	}
 	srcIPStr := string(ciphertextParts[4])
 	if srcIPStr != srcIP.String() {
