@@ -36,6 +36,7 @@ func validConfig() Config {
 				OpenPort:     22,
 				OpenTime:     30,
 				AllowedUsers: []string{"alice"},
+				AllowedIPs:   []string{"203.0.113.10"},
 			},
 		},
 	}

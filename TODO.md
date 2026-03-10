@@ -1,0 +1,5 @@
+- [ ] pass source ip in package and validate it against config
+- [ ] add pf firewall
+- [ ] make it a service/daemon
+- [ ] eval to go back to HMAC and AES
+- [ ] FULLY support IPv6

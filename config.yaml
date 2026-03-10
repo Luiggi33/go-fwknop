@@ -15,3 +15,6 @@ rules:
     open_time: 15
     allowed_users:
       - "alice"
+    allowed_ips:
+      - "192.168.1.5"
+      - "192.168.2.0/24"

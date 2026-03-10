@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 )
 
@@ -15,12 +16,14 @@ type User struct {
 }
 
 type Rule struct {
-	Name         string   `yaml:"name"`
-	KnockPort    uint16   `yaml:"knock_port"`
-	OpenProto    string   `yaml:"open_proto"`
-	OpenPort     uint16   `yaml:"open_port"`
-	OpenTime     uint16   `yaml:"open_time"`
-	AllowedUsers []string `yaml:"allowed_users"`
+	Name          string   `yaml:"name"`
+	KnockPort     uint16   `yaml:"knock_port"`
+	OpenProto     string   `yaml:"open_proto"`
+	OpenPort      uint16   `yaml:"open_port"`
+	OpenTime      uint16   `yaml:"open_time"`
+	AllowedUsers  []string `yaml:"allowed_users"`
+	AllowedIPs    []string `yaml:"allowed_ips"`
+	AllowedIPNets []net.IPNet
 }
 
 func (r *Rule) String() string {
@@ -98,10 +101,40 @@ func (c *Config) Validate() error {
 		}
 		seenKnockPorts[rule.KnockPort] = true
 
+		if len(rule.AllowedUsers) == 0 {
+			return fmt.Errorf("rule %d: at least one allowed user is required", i)
+		}
 		for _, username := range rule.AllowedUsers {
 			if !seenUsername[username] {
 				return fmt.Errorf("rule %d: unknown username %s", i, username)
 			}
+		}
+
+		if len(rule.AllowedIPs) == 0 {
+			return fmt.Errorf("rule %d: at least one allowed IP is required", i)
+		}
+		for j, ip := range rule.AllowedIPs {
+			if ip == "" {
+				return fmt.Errorf("rule %d: allowed_ips contains empty string at index %d", i, j)
+			}
+			if ip == "*" {
+				// special case: allow all IPs
+				c.Rules[i].AllowedIPNets = []net.IPNet{
+					{
+						IP:   net.IPv4zero,
+						Mask: net.CIDRMask(0, 32),
+					},
+				}
+				continue
+			}
+			if !strings.Contains(ip, "/") {
+				ip += "/32"
+			}
+			_, ipnet, err := net.ParseCIDR(ip)
+			if err != nil {
+				return fmt.Errorf("rule %d: invalid allowed_ip %s: %s", i, ip, err)
+			}
+			c.Rules[i].AllowedIPNets = append(c.Rules[i].AllowedIPNets, *ipnet)
 		}
 	}
 	return nil

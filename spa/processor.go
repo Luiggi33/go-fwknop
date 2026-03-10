@@ -84,12 +84,12 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	// decryptedCiphertext = [username\n][unix_timestamp\n][open_proto\n][open_port\n]
+	// decryptedCiphertext = [username\n][unix_timestamp\n][open_proto\n][open_port\n][src_ip\n]
 	ciphertextParts := bytes.Split(decryptedCiphertext, []byte{'\n'})
-	if len(ciphertextParts) == 5 && len(ciphertextParts[4]) == 0 {
-		ciphertextParts = ciphertextParts[:4]
+	if len(ciphertextParts) == 6 && len(ciphertextParts[5]) == 0 {
+		ciphertextParts = ciphertextParts[:5]
 	}
-	if len(ciphertextParts) != 4 {
+	if len(ciphertextParts) != 5 {
 		log.Printf("processor: decrypted ciphertext has too many/too little parts")
 		return nil, nil, ErrSPARejected
 	}
@@ -103,6 +103,23 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 0, 16)
 	if err != nil {
 		return nil, nil, err
+	}
+	srcIPStr := string(ciphertextParts[4])
+	if srcIPStr != srcIP.String() {
+		log.Printf("processor: source IP in decrypted payload doesn't match actual source IP, somebody tampered!")
+		return nil, nil, ErrSPARejected
+	}
+
+	allowed := false
+	for _, ipnet := range rule.AllowedIPNets {
+		if ipnet.Contains(srcIP) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		log.Printf("processor: source IP %s is not allowed to knock for this rule", srcIP.String())
+		return nil, nil, ErrSPARejected
 	}
 
 	if unixTimestamp.After(time.Now().Add(5*time.Second)) || unixTimestamp.Before(time.Now().Add(-60*time.Second)) {
