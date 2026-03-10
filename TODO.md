@@ -1,4 +1,5 @@
-- [ ] pass source ip in package and validate it against config
+- [x] pass source ip in package and validate it against config
+- [ ] add cmd/client to create such spa packets
 - [ ] add pf firewall
 - [ ] make it a service/daemon
 - [ ] eval to go back to HMAC and AES
