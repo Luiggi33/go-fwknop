@@ -20,14 +20,12 @@ func validConfig() Config {
 		MaxPacketLength:   1600,
 		Users: []User{
 			{
-				Name:    "alice",
-				AESKey:  encodedKey(0x11, 32),
-				HMACKey: encodedKey(0x22, 32),
+				Name:   "alice",
+				AESKey: encodedKey(0x11, 32),
 			},
 			{
-				Name:    "bob",
-				AESKey:  encodedKey(0x33, 32),
-				HMACKey: encodedKey(0x44, 32),
+				Name:   "bob",
+				AESKey: encodedKey(0x33, 32),
 			},
 		},
 		Rules: []Rule{
@@ -94,13 +92,6 @@ func TestValidate(t *testing.T) {
 			},
 			wantErrContains: "aes key in wrong format",
 		},
-		{
-			name: "invalid hmac key base64",
-			mutate: func(cfg *Config) {
-				cfg.Users[0].HMACKey = "not-base64***"
-			},
-			wantErrContains: "illegal base64 data",
-		},
 	}
 
 	for _, tc := range tests {
@@ -135,12 +126,8 @@ func TestValidateDecodesUserKeys(t *testing.T) {
 	}
 
 	wantAES, _ := base64.StdEncoding.DecodeString(cfg.Users[0].AESKey)
-	wantHMAC, _ := base64.StdEncoding.DecodeString(cfg.Users[0].HMACKey)
 
 	if !bytes.Equal(cfg.Users[0].AESKeyBytes, wantAES) {
 		t.Fatalf("decoded AES key mismatch")
-	}
-	if !bytes.Equal(cfg.Users[0].HMACKeyBytes, wantHMAC) {
-		t.Fatalf("decoded HMAC key mismatch")
 	}
 }

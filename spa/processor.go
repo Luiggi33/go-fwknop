@@ -42,44 +42,29 @@ func (p *Processor) FindRuleByKnockPort(port uint16) *config.Rule {
 var ErrSPARejected = errors.New("SPA packet rejected")
 
 func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (*config.Rule, *config.User, error) {
-	// base64(iv + ciphertext) + ":" + base64(HMAC-SHA256(iv + ciphertext))
-	payloadParts := bytes.Split(rawPayload, []byte{':'})
-	if len(payloadParts) != 2 {
-		log.Printf("processor: payload has too many/too little parts")
-		return nil, nil, ErrSPARejected
-	}
-
+	// base64(Nonce[12] + AES-GCM-ciphertext + GCM-tag[16])
 	rule := p.FindRuleByKnockPort(knockPort)
 	if rule == nil {
 		log.Printf("processor: no matching rule found")
 		return nil, nil, ErrSPARejected
 	}
 
-	ciphertextPayloadPart := make([]byte, len(payloadParts[0]))
-	copy(ciphertextPayloadPart, payloadParts[0])
-
-	ciphertextPart, err := base64.StdEncoding.DecodeString(string(ciphertextPayloadPart))
-	if err != nil {
-		log.Printf("processor: %s", err.Error())
-		return nil, nil, ErrSPARejected
-	}
-
-	ciphertextPayloadTwo := make([]byte, len(payloadParts[1]))
-	copy(ciphertextPayloadTwo, payloadParts[1])
-
-	hmacPart, err := base64.StdEncoding.DecodeString(string(ciphertextPayloadTwo))
+	ciphertextPart, err := base64.StdEncoding.DecodeString(string(rawPayload))
 	if err != nil {
 		log.Printf("processor: %s", err.Error())
 		return nil, nil, ErrSPARejected
 	}
 
 	var matchedUser *config.User
+	var decryptedCiphertext []byte
 	for i, user := range p.users {
 		if !slices.Contains(rule.AllowedUsers, user.Name) {
 			continue
 		}
-		if VerifyHMAC(user.HMACKeyBytes, ciphertextPart, hmacPart) {
+		decryptedCiphertxt, err := Decrypt(user.AESKeyBytes, ciphertextPart)
+		if err == nil {
 			matchedUser = &p.users[i]
+			decryptedCiphertext = decryptedCiphertxt
 			break
 		}
 	}
@@ -99,12 +84,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	// [username\n][unix_timestamp\n][open_proto\n][open_port\n]
-	decryptedCiphertext, err := Decrypt(matchedUser.AESKeyBytes, ciphertextPart)
-	if err != nil {
-		return nil, nil, err
-	}
-
+	// decryptedCiphertext = [username\n][unix_timestamp\n][open_proto\n][open_port\n]
 	ciphertextParts := bytes.Split(decryptedCiphertext, []byte{'\n'})
 	if len(ciphertextParts) == 5 && len(ciphertextParts[4]) == 0 {
 		ciphertextParts = ciphertextParts[:4]

@@ -13,9 +13,8 @@ import (
 
 func testProcessorFixture() (*Processor, config.User, config.Rule) {
 	user := config.User{
-		Name:         "alice",
-		AESKeyBytes:  bytes.Repeat([]byte{0x10}, 32),
-		HMACKeyBytes: bytes.Repeat([]byte{0x20}, 32),
+		Name:        "alice",
+		AESKeyBytes: bytes.Repeat([]byte{0x10}, 32),
 	}
 	rule := config.Rule{
 		Name:         "ssh",
@@ -36,9 +35,8 @@ func makePayloadFromPlaintext(t *testing.T, user config.User, plaintext []byte) 
 	if err != nil {
 		t.Fatalf("Encrypt() unexpected error: %v", err)
 	}
-	hmac := ComputeHMAC(user.HMACKeyBytes, ciphertext)
 
-	return []byte(base64.StdEncoding.EncodeToString(ciphertext) + ":" + base64.StdEncoding.EncodeToString(hmac))
+	return []byte(base64.StdEncoding.EncodeToString(ciphertext))
 }
 
 func makePayload(t *testing.T, user config.User, username string, timestamp time.Time, openProto string, openPort uint16) []byte {
@@ -64,18 +62,17 @@ func TestProcessorProcessAcceptsValidPayload(t *testing.T) {
 	}
 }
 
-func TestProcessorProcessRejectsInvalidHMAC(t *testing.T) {
+func TestProcessorProcessRejectsTamperedCiphertext(t *testing.T) {
 	processor, user, rule := testProcessorFixture()
 	payload := makePayload(t, user, user.Name, time.Now(), rule.OpenProto, rule.OpenPort)
 
-	parts := bytes.SplitN(payload, []byte{':'}, 2)
-	hmacPart, err := base64.StdEncoding.DecodeString(string(parts[1]))
+	ciphertext, err := base64.StdEncoding.DecodeString(string(payload))
 	if err != nil {
 		t.Fatalf("DecodeString() unexpected error: %v", err)
 	}
-	hmacPart[0] ^= 0xFF
+	ciphertext[len(ciphertext)-1] ^= 0xFF
 
-	tamperedPayload := []byte(string(parts[0]) + ":" + base64.StdEncoding.EncodeToString(hmacPart))
+	tamperedPayload := []byte(base64.StdEncoding.EncodeToString(ciphertext))
 	_, _, err = processor.Process(tamperedPayload, rule.KnockPort, net.ParseIP("203.0.113.10"))
 	if !errors.Is(err, ErrSPARejected) {
 		t.Fatalf("Process() expected ErrSPARejected, got: %v", err)

@@ -8,12 +8,10 @@ import (
 )
 
 type User struct {
-	Name    string `yaml:"name"`
-	AESKey  string `yaml:"aes_key"`
-	HMACKey string `yaml:"hmac_key"`
+	Name   string `yaml:"name"`
+	AESKey string `yaml:"aes_key"`
 
-	AESKeyBytes  []byte
-	HMACKeyBytes []byte
+	AESKeyBytes []byte
 }
 
 type Rule struct {
@@ -74,15 +72,6 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("user %d: aes key in wrong format!", i)
 		}
 		c.Users[i].AESKeyBytes = aesBytes
-
-		hmacBytes, err := base64.StdEncoding.DecodeString(user.HMACKey)
-		if err != nil {
-			return fmt.Errorf("user %d: %s", i, err)
-		}
-		if len(hmacBytes) != 32 {
-			return fmt.Errorf("user %d: hmac key in wrong format!", i)
-		}
-		c.Users[i].HMACKeyBytes = hmacBytes
 
 		if seenUsername[user.Name] {
 			return fmt.Errorf("user %d: duplicated username %s", i, user.Name)

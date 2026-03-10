@@ -1,93 +1,52 @@
 package spa
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
+	"fmt"
 )
-
-func pkcs7Padding(cipherText []byte, blockSize int) []byte {
-	padding := blockSize - len(cipherText)%blockSize
-	padText := bytes.Repeat([]byte{byte(padding)}, padding)
-	return append(cipherText, padText...)
-}
-
-func pkcs7Strip(data []byte, blockSize int) ([]byte, error) {
-	length := len(data)
-	if length == 0 {
-		return nil, errors.New("pkcs7: Data is empty")
-	}
-	if length%blockSize != 0 {
-		return nil, errors.New("pkcs7: Data is not block-aligned")
-	}
-	padLen := int(data[length-1])
-	ref := bytes.Repeat([]byte{byte(padLen)}, padLen)
-	if padLen > blockSize || padLen == 0 || !bytes.HasSuffix(data, ref) {
-		return nil, errors.New("pkcs7: Invalid padding")
-	}
-	return data[:length-padLen], nil
-}
 
 func Encrypt(key, plaintext []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
 	}
 
-	blockSize := block.BlockSize()
-	paddedPlaintext := pkcs7Padding(plaintext, blockSize)
+	nonce := make([]byte, 12)
+	if _, err = rand.Read(nonce); err != nil {
+		return nil, fmt.Errorf("failed to generate nonce: %w", err)
+	}
 
-	iv := make([]byte, 16)
-	_, err = rand.Read(iv)
+	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create GCM mode: %w", err)
 	}
 
-	ciphertext := make([]byte, len(paddedPlaintext))
-	cipher.NewCBCEncrypter(block, iv).CryptBlocks(ciphertext, paddedPlaintext)
-	return append(iv, ciphertext...), nil
+	ciphertext := aesgcm.Seal(nil, nonce, plaintext, nil)
+	return append(nonce, ciphertext...), nil
 }
 
 func Decrypt(key, data []byte) ([]byte, error) {
-	if len(data) < 32 {
-		return nil, errors.New("provided data doesn't match expectations")
-	}
-
-	iv, ciphertext := data[:16], data[16:]
+	nonce, ciphertext := data[:12], data[12:]
 
 	block, err := aes.NewCipher(key)
 	if err != nil {
-		return nil, err
-	}
-	blockSize := block.BlockSize()
-
-	if len(ciphertext)%blockSize != 0 {
-		return nil, errors.New("provided data doesn't match expectations")
+		return nil, fmt.Errorf("failed to create AES cipher: %w", err)
 	}
 
-	mode := cipher.NewCBCDecrypter(block, iv)
-	mode.CryptBlocks(ciphertext, ciphertext)
-
-	unpaddedCiphertext, err := pkcs7Strip(ciphertext, blockSize)
+	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, errors.New("provided data doesn't match expectations")
+		return nil, fmt.Errorf("failed to create GCM mode: %w", err)
 	}
-	return unpaddedCiphertext, nil
-}
 
-func ComputeHMAC(key, data []byte) []byte {
-	mac := hmac.New(sha256.New, key)
-	mac.Write(data)
-	return mac.Sum(nil)
-}
-
-func VerifyHMAC(key, data, provided []byte) bool {
-	return hmac.Equal(ComputeHMAC(key, data), provided)
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt data: %w", err)
+	}
+	return plaintext, nil
 }
 
 func PayloadDigest(ivAndCiphertext []byte) string {

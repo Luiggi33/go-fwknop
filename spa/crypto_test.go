@@ -42,18 +42,18 @@ func TestDecryptRejectsTruncatedCiphertext(t *testing.T) {
 	}
 }
 
-func TestVerifyHMACRejectsTampering(t *testing.T) {
+func TestDecryptRejectsTamperedCiphertext(t *testing.T) {
 	key := bytes.Repeat([]byte{0x29}, 32)
-	data := []byte("single packet authorization")
+	plaintext := []byte("single packet authorization")
 
-	tag := ComputeHMAC(key, data)
-	if !VerifyHMAC(key, data, tag) {
-		t.Fatalf("VerifyHMAC() expected success for valid tag")
+	ciphertext, err := Encrypt(key, plaintext)
+	if err != nil {
+		t.Fatalf("Encrypt() unexpected error: %v", err)
 	}
 
-	tamperedData := append([]byte(nil), data...)
-	tamperedData[0] ^= 0x01
-	if VerifyHMAC(key, tamperedData, tag) {
-		t.Fatalf("VerifyHMAC() expected failure for tampered data")
+	tampered := append([]byte(nil), ciphertext...)
+	tampered[len(tampered)-1] ^= 0x01
+	if _, err := Decrypt(key, tampered); err == nil {
+		t.Fatalf("Decrypt() expected error for tampered ciphertext")
 	}
 }

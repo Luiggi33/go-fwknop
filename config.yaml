@@ -6,7 +6,6 @@ max_packet_length: 65535
 users:
   - name: "alice"
     aes_key: "VqXkBl8jJ/FG9wh0jSlWcgRhxxYo+1IxzD/HHvzRtSs="
-    hmac_key: "WlYuaEat8Asdcybsr2keKqjpwnoD6Qmdg6cav6BcXpA="
 
 rules:
   - name: "ssh-access"
