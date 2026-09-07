@@ -118,17 +118,23 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("rule %d: allowed_ips contains empty string at index %d", i, j)
 			}
 			if ip == "*" {
-				// special case: allow all IPs
-				c.Rules[i].AllowedIPNets = []net.IPNet{
-					{
-						IP:   net.IPv4zero,
-						Mask: net.CIDRMask(0, 32),
-					},
-				}
+				// special case: allow all IPs from both families
+				c.Rules[i].AllowedIPNets = append(c.Rules[i].AllowedIPNets,
+					net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)},
+					net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)},
+				)
 				continue
 			}
 			if !strings.Contains(ip, "/") {
-				ip += "/32"
+				parsed := net.ParseIP(ip)
+				if parsed == nil {
+					return fmt.Errorf("rule %d: invalid allowed_ip %s", i, ip)
+				}
+				if parsed.To4() != nil {
+					ip += "/32"
+				} else {
+					ip += "/128"
+				}
 			}
 			_, ipnet, err := net.ParseCIDR(ip)
 			if err != nil {
