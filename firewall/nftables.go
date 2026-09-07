@@ -105,6 +105,9 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 	}
 
 	if !ruleFound {
+		if _, derr := ruleTarget.Delete(f.conn, ruleData); derr == nil {
+			_ = f.conn.Flush()
+		}
 		return fmt.Errorf("added rule but can't find it in chain")
 	}
 
