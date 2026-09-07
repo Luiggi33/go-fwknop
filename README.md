@@ -22,10 +22,5 @@ The client figures out its own source IP from the socket it's about to send on, 
 Right now, you probably shouldn't use it in anything production worthy. Any test usage and subsequent bug reporting is appreciated!
 
 ## TODO
-- [x] pass source ip in package and validate it against config
-- [x] add cmd/client to create such spa packets
-- [x] rethink the throwing out of packet digests
 - [ ] add pf firewall
 - [ ] make it a service/daemon
-- [x] eval to go back to HMAC and AES
-- [x] FULLY support IPv6
