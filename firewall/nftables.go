@@ -177,17 +177,10 @@ func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
 		return nil, fmt.Errorf("failed to connect to nftables: %w", err)
 	}
 
-	table, err := conn.ListTableOfFamily(tableName, nftables.TableFamilyINet)
-	if err != nil {
-		return nil, fmt.Errorf("failed to list table: %w", err)
-	}
-
-	if table == nil {
-		table = conn.AddTable(&nftables.Table{
-			Family: nftables.TableFamilyINet, // covers both IPv4 and IPv6
-			Name:   tableName,
-		})
-	}
+	table := conn.AddTable(&nftables.Table{
+		Family: nftables.TableFamilyINet, // covers both IPv4 and IPv6
+		Name:   tableName,
+	})
 
 	chain := conn.AddChain(&nftables.Chain{
 		Name:     chainName,
@@ -196,6 +189,9 @@ func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
 		Hooknum:  nftables.ChainHookInput,
 		Priority: nftables.ChainPriorityFilter,
 	})
+
+	// drop any ACCEPT rules left behind by an unclean shutdown
+	conn.FlushChain(chain)
 
 	if err := conn.Flush(); err != nil {
 		return nil, fmt.Errorf("failed to set up table/chain: %w", err)
