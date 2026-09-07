@@ -1,16 +1,21 @@
-listen_on_interface: "lo"
+listen_on_interface: "eth0"
+firewall_backend: "nftables"
+nftables_table_name: "go-knop-tbl"
+nftables_chain_name: "go-knop-chain"
+max_packet_length: 65535
 
-nftables_table_name: go-knop-tbl
-nftables_chain_name: go-knop-chain
+users:
+  - name: "alice"
+    aes_key: "VqXkBl8jJ/FG9wh0jSlWcgRhxxYo+1IxzD/HHvzRtSs="
 
-access_rules:
-  - knock_proto: "udp"
-    knock_port: 8000
-    open_proto: "tcp"
-    open_port: 9876
-    open_time: 15
-  - knock_proto: "tcp"
-    knock_port: 9000
+rules:
+  - name: "ssh-access"
+    knock_port: 62201
     open_proto: "tcp"
     open_port: 22
-    open_time: 10
+    open_time: 15
+    allowed_users:
+      - "alice"
+    allowed_ips:
+      - "192.168.1.5"
+      - "192.168.2.0/24"

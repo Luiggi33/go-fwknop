@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Build
+        run: go build ./...
+      - name: Vet
+        run: go vet ./...
+      - uses: dominikh/staticcheck-action@v1.4.1
+        with:
+          install-go: false
+          version: "2026.2.1"
+      - name: Test
+        run: go test ./...

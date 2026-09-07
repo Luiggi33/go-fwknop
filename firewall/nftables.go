@@ -1,0 +1,205 @@
+package firewall
+
+import (
+	"bytes"
+	"errors"
+	"fmt"
+	"log"
+	"net"
+	"net/netip"
+	"strings"
+	"sync"
+
+	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
+	"github.com/ngrok/firewall_toolkit/pkg/expressions"
+	"github.com/ngrok/firewall_toolkit/pkg/rule"
+)
+
+type RuleKey struct {
+	SrcIP     string
+	OpenPort  uint16
+	OpenProto string
+}
+
+func (r RuleKey) String() string {
+	return fmt.Sprintf("%s:%s:%d", r.SrcIP, r.OpenProto, r.OpenPort)
+}
+
+type NFTablesManager struct {
+	conn        *nftables.Conn
+	table       *nftables.Table
+	chain       *nftables.Chain
+	activeRules map[RuleKey]uint64
+	mu          sync.Mutex
+}
+
+var ErrRuleExists = errors.New("rule already active")
+
+func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	ruleKey := RuleKey{
+		SrcIP:     srcIP.String(),
+		OpenPort:  openPort,
+		OpenProto: openProto,
+	}
+
+	if _, exists := f.activeRules[ruleKey]; exists {
+		return ErrRuleExists
+	}
+
+	parsedIP, ok := netip.AddrFromSlice(srcIP)
+	if !ok {
+		return fmt.Errorf("invalid source IP: %v", srcIP)
+	}
+	parsedIP = parsedIP.Unmap()
+
+	var addressFamilyExpression expressions.AddrFamily
+	if parsedIP.Is4() {
+		addressFamilyExpression = expressions.IPv4
+	} else {
+		addressFamilyExpression = expressions.IPv6
+	}
+
+	var protoExpression expressions.TransportProto
+	if strings.EqualFold(openProto, "tcp") {
+		protoExpression = expressions.TCP
+	} else if strings.EqualFold(openProto, "udp") {
+		protoExpression = expressions.UDP
+	} else {
+		return fmt.Errorf("unsupported protocol: %s", openProto)
+	}
+
+	exprs, err := rule.Build(expr.VerdictAccept, rule.AddressFamily(addressFamilyExpression), rule.SourceAddress(parsedIP), rule.TransportProtocol(protoExpression), rule.DestinationPort(openPort))
+	if err != nil {
+		return err
+	}
+
+	userData := []byte(ruleKey.String())
+
+	f.conn.AddRule(&nftables.Rule{
+		Table:    f.table,
+		Chain:    f.chain,
+		Exprs:    exprs,
+		UserData: userData,
+	})
+	if err := f.conn.Flush(); err != nil {
+		return fmt.Errorf("flush rules: %w", err)
+	}
+
+	chainRules, err := f.conn.GetRules(f.table, f.chain)
+	if err != nil {
+		return fmt.Errorf("failed to get rules after insert: %w", err)
+	}
+
+	var handles []uint64
+	for _, r := range chainRules {
+		if bytes.Equal(r.UserData, userData) {
+			handles = append(handles, r.Handle)
+		}
+	}
+	if len(handles) != 1 {
+		f.conn.FlushChain(f.chain)
+		clear(f.activeRules)
+		_ = f.conn.Flush()
+		return fmt.Errorf("expected 1 rule for %s after insert, found %d; chain flushed", ruleKey, len(handles))
+	}
+	f.activeRules[ruleKey] = handles[0]
+
+	log.Printf("added firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
+
+	return nil
+}
+
+func (f *NFTablesManager) RevokeRule(srcIP net.IP, openPort uint16, openProto string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	key := RuleKey{SrcIP: srcIP.String(), OpenPort: openPort, OpenProto: openProto}
+	handle, ok := f.activeRules[key]
+	if !ok {
+		return nil
+	}
+
+	err := f.conn.DelRule(&nftables.Rule{
+		Table:  f.table,
+		Chain:  f.chain,
+		Handle: handle,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to remove rule: %w", err)
+	}
+
+	if err := f.conn.Flush(); err != nil {
+		return fmt.Errorf("failed to flush rule removal: %w", err)
+	}
+
+	delete(f.activeRules, key)
+
+	log.Printf("revoked firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
+
+	return nil
+}
+
+func (f *NFTablesManager) CleanupRules() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var errs error
+	for _, handle := range f.activeRules {
+		errs = errors.Join(errs, f.conn.DelRule(&nftables.Rule{
+			Table:  f.table,
+			Chain:  f.chain,
+			Handle: handle,
+		}))
+	}
+
+	if err := f.conn.Flush(); err != nil {
+		return errors.Join(errs, fmt.Errorf("failed to cleanup rules: %w", err))
+	}
+
+	clear(f.activeRules)
+
+	return errs
+}
+
+func (f *NFTablesManager) Close() error {
+	return f.conn.CloseLasting()
+}
+
+func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
+	conn, err := nftables.New(nftables.AsLasting())
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to nftables: %w", err)
+	}
+
+	table := conn.AddTable(&nftables.Table{
+		Family: nftables.TableFamilyINet, // covers both IPv4 and IPv6
+		Name:   tableName,
+	})
+
+	// we only add the allow rule, there is no "default drop", this needs to be provided by the host itself
+	chain := conn.AddChain(&nftables.Chain{
+		Name:     chainName,
+		Table:    table,
+		Type:     nftables.ChainTypeFilter,
+		Hooknum:  nftables.ChainHookInput,
+		Priority: nftables.ChainPriorityFilter,
+	})
+
+	// drop any ACCEPT rules left behind by an unclean shutdown
+	conn.FlushChain(chain)
+
+	if err := conn.Flush(); err != nil {
+		return nil, fmt.Errorf("failed to set up table/chain: %w", err)
+	}
+
+	return &NFTablesManager{
+		conn:        conn,
+		table:       table,
+		chain:       chain,
+		activeRules: make(map[RuleKey]uint64),
+	}, nil
+}
