@@ -1,5 +1,5 @@
 - [x] pass source ip in package and validate it against config
-- [ ] add cmd/client to create such spa packets
+- [x] add cmd/client to create such spa packets
 - [x] rethink the throwing out of packet digests
 - [ ] add pf firewall
 - [ ] make it a service/daemon
