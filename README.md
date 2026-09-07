@@ -1,5 +1,5 @@
-# fwknop in golang
-or simply go-fwknop
+# go-fwknop
+A fwknop-inspired Single Packet Authorization written in Go
 
 ## What is this?
 I was recently confronted with the project fwknop by mrash (https://github.com/mrash/fwknop/) and as I wanted to improve my GoLang skills, I started working on (re)creating something that is inspired by fwknops SPA.
