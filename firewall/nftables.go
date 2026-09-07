@@ -183,6 +183,7 @@ func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
 		Name:   tableName,
 	})
 
+	// we only add the allow rule, there is no "default drop", this needs to be provided by the host itself
 	chain := conn.AddChain(&nftables.Chain{
 		Name:     chainName,
 		Table:    table,
