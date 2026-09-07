@@ -113,7 +113,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 	srcIPStr := string(ciphertextParts[4])
-	if net.ParseIP(srcIPStr).Equal(srcIP) {
+	if !net.ParseIP(srcIPStr).Equal(srcIP) {
 		log.Printf("processor: source IP in decrypted payload doesn't match actual source IP, somebody tampered!")
 		return nil, nil, ErrSPARejected
 	}
