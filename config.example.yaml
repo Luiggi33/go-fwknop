@@ -1,0 +1,27 @@
+# Copy to /etc/knopd/config.yaml and edit.
+# The daemon refuses to start until listen_on_interface and every aes_key are set!
+
+# Interface to sniff for knock packets, e.g. eth0, ens3, wg0. Required.
+listen_on_interface: ""
+
+firewall_backend: "nftables"          # only backend for now
+nftables_table_name: "go-knop-tbl"    # created by the daemon, must not collide
+nftables_chain_name: "go-knop-chain"
+max_packet_length: 65535              # pcap snaplen, 1-65535
+
+users:
+  - name: "alice"
+    # 32 random bytes, base64: openssl rand -base64 32
+    # Share this with the client via $KNOCK_KEY or -key-file. Never commit it.
+    aes_key: "GENERATE_ME"
+
+rules:
+  - name: "ssh-access"
+    knock_port: 62201        # UDP port the knock is sent to; must be unique per rule
+    open_proto: "tcp"        # tcp or udp to be opened
+    open_port: 22            # what port gets opened on a valid knock
+    open_time: 15            # seconds before the rule is closed again
+    allowed_users: ["alice"] # must name users defined above
+    allowed_ips:             # source IPs allowed to knock; "*" for any; no cidr means the specific adress
+      - "192.168.1.5"
+      - "192.168.2.0/24"
