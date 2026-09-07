@@ -79,13 +79,12 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 
 	userData := []byte(ruleKey.String())
 
-	ruleTarget := rule.NewRuleTarget(f.table, f.chain)
-	ruleData := rule.NewRuleData(userData, exprs)
-	_, err = ruleTarget.Add(f.conn, ruleData)
-	if err != nil {
-		return fmt.Errorf("adding rule to target: %w", err)
-	}
-
+	f.conn.AddRule(&nftables.Rule{
+		Table:    f.table,
+		Chain:    f.chain,
+		Exprs:    exprs,
+		UserData: userData,
+	})
 	if err := f.conn.Flush(); err != nil {
 		return fmt.Errorf("flush rules: %w", err)
 	}
@@ -95,21 +94,19 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		return fmt.Errorf("failed to get rules after insert: %w", err)
 	}
 
-	ruleFound := false
+	var handles []uint64
 	for _, r := range chainRules {
 		if bytes.Equal(r.UserData, userData) {
-			f.activeRules[ruleKey] = r.Handle
-			ruleFound = true
-			break
+			handles = append(handles, r.Handle)
 		}
 	}
-
-	if !ruleFound {
-		if _, derr := ruleTarget.Delete(f.conn, ruleData); derr == nil {
-			_ = f.conn.Flush()
-		}
-		return fmt.Errorf("added rule but can't find it in chain")
+	if len(handles) != 1 {
+		f.conn.FlushChain(f.chain)
+		clear(f.activeRules)
+		_ = f.conn.Flush()
+		return fmt.Errorf("expected 1 rule for %s after insert, found %d; chain flushed", ruleKey, len(handles))
 	}
+	f.activeRules[ruleKey] = handles[0]
 
 	log.Printf("added firewall rule: %s -> %s port %d\n", srcIP, openProto, openPort)
 
