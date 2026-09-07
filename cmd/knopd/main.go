@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"syscall"
 	"time"
 
@@ -34,7 +35,14 @@ func newFirewallManager(cfg config.Config) (firewall.Manager, error) {
 
 func main() {
 	configFile := flag.String("config-file", "/etc/knopd/config.yaml", "config file that should be used")
+	showVersion := flag.Bool("version", false, "show version")
 	flag.Parse()
+
+	if *showVersion {
+		info, _ := debug.ReadBuildInfo()
+		fmt.Println(info.Main.Version)
+		return
+	}
 
 	var config config.Config
 	yamlFile, err := os.ReadFile(*configFile)
