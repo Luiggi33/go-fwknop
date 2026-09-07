@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/google/gopacket"
@@ -65,7 +66,7 @@ func main() {
 
 	log.Printf("Successfully started knock listener on device \"%s\"\n", config.Device)
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	processor := spa.NewProcessor(config.Users, config.Rules)
