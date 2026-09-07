@@ -1,4 +1,5 @@
 listen_on_interface: "eth0"
+firewall_backend: "nftables"
 nftables_table_name: "go-knop-tbl"
 nftables_chain_name: "go-knop-chain"
 max_packet_length: 65535
