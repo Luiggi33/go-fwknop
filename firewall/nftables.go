@@ -50,9 +50,9 @@ func (f *NFTablesManager) AddRule(srcIP net.IP, openPort uint16, openProto strin
 		return ErrRuleExists
 	}
 
-	parsedIP, err := netip.ParseAddr(srcIP.String())
-	if err != nil {
-		return err
+	parsedIP, ok := netip.AddrFromSlice(srcIP)
+	if !ok {
+		return fmt.Errorf("invalid source IP: %v", srcIP)
 	}
 	parsedIP = parsedIP.Unmap()
 
