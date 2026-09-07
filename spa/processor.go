@@ -14,6 +14,14 @@ import (
 	"time"
 )
 
+const (
+	// how far ahead of / behind our clock a payload timestamp may be
+	maxClockSkew  = 5 * time.Second
+	maxPayloadAge = 60 * time.Second
+	// past this, a digest can never pass the timestamp check again
+	replayWindow = maxPayloadAge + maxClockSkew
+)
+
 type Processor struct {
 	users       []config.User
 	rules       []config.Rule
@@ -122,7 +130,8 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 		return nil, nil, ErrSPARejected
 	}
 
-	if unixTimestamp.After(time.Now().Add(5*time.Second)) || unixTimestamp.Before(time.Now().Add(-60*time.Second)) {
+	now := time.Now()
+	if unixTimestamp.After(now.Add(maxClockSkew)) || unixTimestamp.Before(now.Add(-maxPayloadAge)) {
 		log.Printf("processor: timestamp seems unusual... replay attack?")
 		return nil, nil, ErrSPARejected
 	}
@@ -142,14 +151,14 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	return rule, matchedUser, nil
 }
 
-func (p *Processor) StartEviction(ctx context.Context, window time.Duration) {
-	ticker := time.NewTicker(window / 4)
+func (p *Processor) StartEviction(ctx context.Context) {
+	ticker := time.NewTicker(replayWindow / 4)
 	go func() {
 		defer ticker.Stop()
 		for {
 			select {
 			case <-ticker.C:
-				cutoff := time.Now().Add(-window)
+				cutoff := time.Now().Add(-replayWindow)
 				p.mu.Lock()
 				for digest, seen := range p.replayCache {
 					if seen.Before(cutoff) {

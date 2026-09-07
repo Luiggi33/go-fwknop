@@ -70,7 +70,7 @@ func main() {
 	defer stop()
 
 	processor := spa.NewProcessor(config.Users, config.Rules)
-	processor.StartEviction(ctx, 1*time.Hour)
+	processor.StartEviction(ctx)
 
 	packetSource := gopacket.NewPacketSource(handle, handle.LinkType())
 	for {
