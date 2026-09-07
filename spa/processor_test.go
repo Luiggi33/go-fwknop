@@ -49,7 +49,8 @@ func makePayloadFromPlaintext(t *testing.T, user config.User, plaintext []byte) 
 func makePayload(t *testing.T, user config.User, username string, timestamp time.Time, openProto string, openPort uint16, srcIP string) []byte {
 	t.Helper()
 
-	plaintext := []byte(fmt.Sprintf("%s\n%d\n%s\n%d\n%s\n", username, timestamp.Unix(), openProto, openPort, srcIP))
+	var plaintext []byte
+	plaintext = fmt.Appendf(plaintext, "%s\n%d\n%s\n%d\n%s\n", username, timestamp.Unix(), openProto, openPort, srcIP)
 	return makePayloadFromPlaintext(t, user, plaintext)
 }
 
