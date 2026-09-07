@@ -136,7 +136,7 @@ func (f *NFTablesManager) RevokeRule(srcIP net.IP, openPort uint16, openProto st
 	}
 
 	if err := f.conn.Flush(); err != nil {
-		return fmt.Errorf("failed to remove rule: %w", err)
+		return fmt.Errorf("failed to flush rule removal: %w", err)
 	}
 
 	delete(f.activeRules, key)
