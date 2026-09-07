@@ -150,21 +150,22 @@ func (f *NFTablesManager) CleanupRules() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
+	var errs error
 	for _, handle := range f.activeRules {
-		f.conn.DelRule(&nftables.Rule{
+		errs = errors.Join(errs, f.conn.DelRule(&nftables.Rule{
 			Table:  f.table,
 			Chain:  f.chain,
 			Handle: handle,
-		})
+		}))
 	}
 
 	if err := f.conn.Flush(); err != nil {
-		return fmt.Errorf("failed to cleanup rule: %w", err)
+		return errors.Join(errs, fmt.Errorf("failed to cleanup rules: %w", err))
 	}
 
 	clear(f.activeRules)
 
-	return nil
+	return errs
 }
 
 func (f *NFTablesManager) Close() error {
