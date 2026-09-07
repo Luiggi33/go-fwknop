@@ -2,10 +2,7 @@
 A fwknop-inspired Single Packet Authorization written in Go
 
 ## What is this?
-I was recently confronted with the project fwknop by mrash (https://github.com/mrash/fwknop/) and as I wanted to improve my GoLang skills, I started working on (re)creating something that is inspired by fwknops SPA.
-
-## Should I use this?
-Right now, you probably shouldn't use it in anything production worthy. Any test usage and subsequent bug reporting is appreciated!
+I was recently introduced to fwknop by mrash (https://github.com/mrash/fwknop/) and as I wanted to improve my GoLang skills, I started working on (re)creating something that is inspired by fwknops SPA.
 
 ## Sending a knock
 `cmd/client` builds and sends a single SPA packet. Build it with `go build ./cmd/client`, or just run it directly:
@@ -20,6 +17,9 @@ KNOCK_KEY="$(cat alice.key)" go run ./cmd/client \
 The AES key is read from `$KNOCK_KEY` or from `-key-file`, both base64 like in the config. There is deliberately no `-key` flag, since anything passed on the command line ends up in your shell history and in `ps` output.
 
 The client figures out its own source IP from the socket it's about to send on, which is the address the daemon needs to see in the payload. That is the right answer unless you're behind NAT, in which case pass the public address the daemon sees with `-source-ip`. IPv4 and IPv6 both work and the family is picked automatically from whatever `-server` resolves to.
+
+## Should I use this?
+Right now, you probably shouldn't use it in anything production worthy. Any test usage and subsequent bug reporting is appreciated!
 
 ## TODO
 - [x] pass source ip in package and validate it against config
