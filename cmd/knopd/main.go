@@ -5,15 +5,16 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"fwknock/config"
-	"fwknock/firewall"
-	"fwknock/spa"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/Luiggi33/go-fwknop/config"
+	"github.com/Luiggi33/go-fwknop/firewall"
+	"github.com/Luiggi33/go-fwknop/spa"
 
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -32,7 +33,7 @@ func newFirewallManager(cfg config.Config) (firewall.Manager, error) {
 }
 
 func main() {
-	configFile := flag.String("config-file", "config.yaml", "config file that should be used")
+	configFile := flag.String("config-file", "/etc/knopd/config.yaml", "config file that should be used")
 	flag.Parse()
 
 	var config config.Config

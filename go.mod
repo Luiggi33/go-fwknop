@@ -1,4 +1,4 @@
-module fwknock
+module github.com/Luiggi33/go-fwknop
 
 go 1.27.1
 

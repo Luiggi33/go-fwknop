@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fwknock/config"
+	"github.com/Luiggi33/go-fwknop/config"
 	"log"
 	"net"
 	"slices"

@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"fwknock/config"
+	"github.com/Luiggi33/go-fwknop/config"
 	"net"
 	"testing"
 	"time"

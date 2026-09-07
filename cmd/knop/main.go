@@ -6,7 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"fwknock/spa"
+	"github.com/Luiggi33/go-fwknop/spa"
 	"log"
 	"net"
 	"os"

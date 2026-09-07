@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
-	"fwknock/config"
-	"fwknock/spa"
+	"github.com/Luiggi33/go-fwknop/config"
+	"github.com/Luiggi33/go-fwknop/spa"
 	"net"
 	"os"
 	"path/filepath"
