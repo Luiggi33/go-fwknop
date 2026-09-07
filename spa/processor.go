@@ -100,7 +100,7 @@ func (p *Processor) Process(rawPayload []byte, knockPort uint16, srcIP net.IP) (
 	}
 	unixTimestamp := time.Unix(int64(unixTimestampInt), 0)
 	openProto := string(ciphertextParts[2])
-	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 0, 16)
+	openPort, err := strconv.ParseUint(string(ciphertextParts[3]), 10, 16)
 	if err != nil {
 		return nil, nil, ErrSPARejected
 	}
