@@ -72,7 +72,7 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("user %d: %s", i, err)
 		}
 		if len(aesBytes) != 32 {
-			return fmt.Errorf("user %d: aes key in wrong format!", i)
+			return fmt.Errorf("user %d: aes key in wrong format, want 32 bytes", i)
 		}
 		c.Users[i].AESKeyBytes = aesBytes
 
