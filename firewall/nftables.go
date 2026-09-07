@@ -169,10 +169,7 @@ func (f *NFTablesManager) CleanupRules() error {
 }
 
 func (f *NFTablesManager) Close() error {
-	if err := f.conn.CloseLasting(); err != nil {
-		return err
-	}
-	return nil
+	return f.conn.CloseLasting()
 }
 
 func NewNFTablesManager(tableName, chainName string) (*NFTablesManager, error) {
