@@ -1,7 +1,0 @@
-- [x] pass source ip in package and validate it against config
-- [x] add cmd/client to create such spa packets
-- [x] rethink the throwing out of packet digests
-- [ ] add pf firewall
-- [ ] make it a service/daemon
-- [x] eval to go back to HMAC and AES
-- [x] FULLY support IPv6
