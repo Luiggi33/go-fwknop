@@ -4,4 +4,4 @@
 - [ ] add pf firewall
 - [ ] make it a service/daemon
 - [x] eval to go back to HMAC and AES
-- [ ] FULLY support IPv6
+- [x] FULLY support IPv6

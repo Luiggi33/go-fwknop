@@ -124,7 +124,8 @@ func TestProcessorProcessRejectsProtoPortMismatch(t *testing.T) {
 
 func TestProcessorProcessMalformedDecryptedPayloadDoesNotPanic(t *testing.T) {
 	processor, user, rule := testProcessorFixture()
-	plaintext := []byte(fmt.Sprintf("%s\n%d\n", user.Name, time.Now().Unix()))
+	var plaintext []byte
+	plaintext = fmt.Appendf(plaintext, "%s\n%d\n", user.Name, time.Now().Unix())
 	payload := makePayloadFromPlaintext(t, user, plaintext)
 
 	didPanic := false
@@ -198,5 +199,73 @@ func TestProcessorProcessAcceptsCIDRRange(t *testing.T) {
 	}
 	if matchedUser == nil || matchedUser.Name != user.Name {
 		t.Fatalf("Process() returned wrong user")
+	}
+}
+
+func testProcessorFixtureIPv6() (*Processor, config.User, config.Rule) {
+	user := config.User{
+		Name:        "alice",
+		AESKeyBytes: bytes.Repeat([]byte{0x10}, 32),
+	}
+	_, ipnet, _ := net.ParseCIDR("2001:db8::/64")
+	rule := config.Rule{
+		Name:          "ssh",
+		KnockPort:     62201,
+		OpenProto:     "tcp",
+		OpenPort:      22,
+		OpenTime:      15,
+		AllowedUsers:  []string{"alice"},
+		AllowedIPs:    []string{"2001:db8::/64"},
+		AllowedIPNets: []net.IPNet{*ipnet},
+	}
+	processor := NewProcessor([]config.User{user}, []config.Rule{rule})
+	return processor, user, rule
+}
+
+func TestProcessorProcessAcceptsIPv6(t *testing.T) {
+	processor, user, rule := testProcessorFixtureIPv6()
+	payload := makePayload(t, user, user.Name, time.Now(), rule.OpenProto, rule.OpenPort, "2001:db8::10")
+
+	matchedRule, matchedUser, err := processor.Process(payload, rule.KnockPort, net.ParseIP("2001:db8::10"))
+	if err != nil {
+		t.Fatalf("Process() unexpected error: %v", err)
+	}
+	if matchedRule == nil || matchedRule.Name != rule.Name {
+		t.Fatalf("Process() returned wrong rule")
+	}
+	if matchedUser == nil || matchedUser.Name != user.Name {
+		t.Fatalf("Process() returned wrong user")
+	}
+}
+
+func TestProcessorProcessAcceptsNonCanonicalIPv6(t *testing.T) {
+	processor, user, rule := testProcessorFixtureIPv6()
+	// we should be able to handle every type of IPv6 addresses
+	payload := makePayload(t, user, user.Name, time.Now(), rule.OpenProto, rule.OpenPort, "2001:0DB8:0:0:0:0:0:10")
+
+	_, _, err := processor.Process(payload, rule.KnockPort, net.ParseIP("2001:db8::10"))
+	if err != nil {
+		t.Fatalf("Process() unexpected error for non-canonical IPv6: %v", err)
+	}
+}
+
+func TestProcessorProcessRejectsIPv6OutsideAllowedRange(t *testing.T) {
+	processor, user, rule := testProcessorFixtureIPv6()
+	payload := makePayload(t, user, user.Name, time.Now(), rule.OpenProto, rule.OpenPort, "2001:db8:1::10")
+
+	_, _, err := processor.Process(payload, rule.KnockPort, net.ParseIP("2001:db8:1::10"))
+	if !errors.Is(err, ErrSPARejected) {
+		t.Fatalf("Process() expected ErrSPARejected for IPv6 outside allowed range, got: %v", err)
+	}
+}
+
+func TestProcessorProcessRejectsMismatchedIPv6SourceIP(t *testing.T) {
+	processor, user, rule := testProcessorFixtureIPv6()
+	// payload claims to be from ::10 but we pass ::11
+	payload := makePayload(t, user, user.Name, time.Now(), rule.OpenProto, rule.OpenPort, "2001:db8::10")
+
+	_, _, err := processor.Process(payload, rule.KnockPort, net.ParseIP("2001:db8::11"))
+	if !errors.Is(err, ErrSPARejected) {
+		t.Fatalf("Process() expected ErrSPARejected for mismatched IPv6 source IP, got: %v", err)
 	}
 }
